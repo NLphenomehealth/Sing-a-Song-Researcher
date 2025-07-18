@@ -77,9 +77,9 @@
         let unsubscribe = null;
         let currentSessionId = null;
         let sessionStartTime = null;
-        let allConfigs = {}; // Will hold all our script/content data
+        let currentGameState = {};
+        let allConfigs = {}; 
 
-        // --- All Screen Configurations and Content ---
         function initializeContent() {
             allConfigs = {
                 'welcome': {
@@ -107,35 +107,18 @@
                     actions: ["Observe participant silently reading until timer reaches 00:00."],
                     taskContent: { title: 'Read the following passage Silently', passageTitle: 'Vacuum Cleaner', passageBody: 'A vacuum cleaner, also known simply as a vacuum, is a device that uses suction-often with agitation-to remove dirt and debris from carpets, hard floors, and other surfaces...'}
                 },
-                'readAloud1': {
-                    title: 'Read-Aloud Task 1', participantSees: "Participant is reading a passage aloud.", hasTimer: true, timerDefault: '0:12',
-                    actions: ["Observe participant reading aloud until timer reaches 00:00."],
-                    taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Paper Clip', passageBody: 'A paper clip (or paperclip) is a small steel-wire device (sometimes plastic-coated) bent into loops that hold sheets of paper together by torsion and friction...'}
-                },
-                'readAloud2': {
-                    title: 'Read-Aloud Task 2', participantSees: "Participant is reading a passage aloud.", hasTimer: true, timerDefault: '0:12',
-                    actions: ["Observe participant reading aloud until timer reaches 00:00."],
-                    taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Wood', passageBody: 'Wood is the structural xylem tissue in the stems and roots of trees and other woody plants—a composite of cellulose fibers (strong under tension) embedded in lignin (resistant to compression)...'}
+                'readAloud': { // This is a generic screen, content is injected
+                    title: 'Read-Aloud Task', participantSees: "Participant is reading a passage aloud.", hasTimer: true, timerDefault: '0:12',
+                    actions: ["Observe participant reading aloud until timer reaches 00:00."]
                 },
                 'challengeInstructions': {
                     title: 'Read-Aloud Challenge Instructions', participantSees: "Participant is reading the singing challenge instructions.", hasTimer: true, timerDefault: '1:00',
                     actions: ["Observe participant reading aloud until the timer reaches 00:00."],
                     taskContent: { title: 'Read the following Challenge instructions Aloud', passageTitle: '', passageBody: 'You will now prepare for a singing challenge. Your performance will be recorded and evaluated by a music professional. Songs you may be asked to sing are listed below. If you finish a song before the time ends. Start over from the beginning until the timer reaches 00:00.\n\nOnce you see the screen with lyrics to the song, begin singing!\n\nSong list:\n• I\'m a Little Teapot\n• Twinkle, Twinkle, Little Star\n• Mary Had a Little Lamb'}
                 },
-                'singASong1': {
-                    title: 'Sing-a-Song Challenge 1', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
-                    actions: ["Observe participant singing. If they finish early, ask them to start again."],
-                    taskContent: { title: 'Sing the following song Aloud', passageTitle: 'I\'m a Little Teapot', passageBody: 'I\'m a little teapot, short and stout. Here is my handle, here is my spout. When the water\'s boiling, hear me shout: "Tip me over, pour me out!"...'}
-                },
-                'singASong2': {
-                    title: 'Sing-a-Song Challenge 2', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
-                    actions: ["Observe participant singing. If they finish early, ask them to start again."],
-                    taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Twinkle, Twinkle, Little Star', passageBody: 'Twinkle, twinkle, little star, How I wonder what you are! Up above the world so high, Like a diamond in the sky...'}
-                },
-                'singASong3': {
-                    title: 'Sing-a-Song Challenge 3', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
-                    actions: ["Observe participant singing. If they finish early, ask them to start again."],
-                    taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Mary Had a Little Lamb', passageBody: 'Mary had a little lamb, little lamb, little lamb; Mary had a little lamb, its fleece was white as snow...'}
+                 'singASong': { // Generic screen, content injected
+                    title: 'Sing-a-Song Challenge', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
+                    actions: ["Observe participant singing. If they finish early, ask them to start again."]
                 },
                 'countdown': {
                     title: 'Countdown', participantSees: "Participant sees a 1-minute countdown.", hasTimer: true, timerDefault: '1:00',
@@ -156,19 +139,25 @@
                     title: 'Debrief & Close', participantSees: "Participant sees the 'Challenge Complete' screen.",
                     script: "Thank you for completing today's tasks. For the next 90 minutes, until approximately __END_TIME__, please stay seated as much as possible and avoid food, beverages, and strenuous or stressful activity...",
                     actions: ["Stop recording, end video call.", "If Final Challenge: Complete a debrief (Appendix B)."]
-                }
+                },
+                // Specific task content definitions
+                'readAloud1_content': { taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Paper Clip', passageBody: 'A paper clip (or paperclip) is a small steel-wire device (sometimes plastic-coated) bent into loops that hold sheets of paper together by torsion and friction...'}},
+                'readAloud2_content': { taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Wood', passageBody: 'Wood is the structural xylem tissue in the stems and roots of trees and other woody plants—a composite of cellulose fibers (strong under tension) embedded in lignin (resistant to compression)...'}},
+                'singASong1_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'I\'m a Little Teapot', passageBody: 'I\'m a little teapot, short and stout. Here is my handle, here is my spout. When the water\'s boiling, hear me shout: "Tip me over, pour me out!"...'}},
+                'singASong2_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Twinkle, Twinkle, Little Star', passageBody: 'Twinkle, twinkle, little star, How I wonder what you are! Up above the world so high, Like a diamond in the sky...'}},
+                'singASong3_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Mary Had a Little Lamb', passageBody: 'Mary had a little lamb, little lamb, little lamb; Mary had a little lamb, its fleece was white as snow...'}}
             };
         }
 
         window.onload = function() {
             initializeContent();
             const firebaseConfig = {
-                apiKey: "AIzaSyDcItjK2ZVCH-QqhjyOrh8FCfjqrqC63EM",
-                authDomain: "sing-a-song-6f6df.firebaseapp.com",
-                projectId: "sing-a-song-6f6df",
-                storageBucket: "sing-a-song-6f6df.appspot.com",
-                messagingSenderId: "701648987527",
-                appId: "1:701648987527:web:db7cc710226d44b3ed9f22"
+                apiKey: "AIzaSyDU_9f8mWWP6GHcJzW0BnzsmYUCvIBXooU",
+                authDomain: "sing-a-song-c80f1.firebaseapp.com",
+                projectId: "sing-a-song-c80f1",
+                storageBucket: "sing-a-song-c80f1.firebasestorage.app",
+                messagingSenderId: "542681033418",
+                appId: "1:542681033418:web:6bc5b42bb4e8ecca456233"
             };
             try {
                 const app = initializeApp(firebaseConfig);
@@ -184,7 +173,7 @@
 
         function sendCommand(command) {
             if (!currentSessionId) return;
-            const appId = "sing-a-song-6f6df";
+            const appId = "sing-a-song-c80f1";
             const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, currentSessionId);
             const commandWithId = { ...command, commandId: crypto.randomUUID(), issuedAt: serverTimestamp() };
             setDoc(sessionRef, { command: commandWithId }, { merge: true });
@@ -197,7 +186,7 @@
             document.getElementById('error-message').textContent = 'Connecting...';
             if (unsubscribe) unsubscribe();
             currentSessionId = sessionId;
-            const appId = "sing-a-song-6f6df";
+            const appId = "sing-a-song-c80f1";
             const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, sessionId);
             unsubscribe = onSnapshot(sessionRef, (doc) => {
                 if (doc.exists()) {
@@ -214,6 +203,7 @@
         
         let currentScreenId = null;
         function renderState(newState) {
+            currentGameState = newState;
             if (newState.screenId !== currentScreenId) {
                 currentScreenId = newState.screenId;
                 document.getElementById('all-screens-container').innerHTML = getScreenHtml(newState);
@@ -235,7 +225,6 @@
             const screenId = state.screenId;
             let config = allConfigs[screenId] || {};
             
-            // For tasks that share a screen but have different content
             if (state.taskContent && state.taskContent.title) {
                  config = { ...config, ...state.taskContent };
             }
@@ -246,7 +235,7 @@
                     const offsetDifferenceMs = (sessionStartTime.getTimezoneOffset() - state.timezoneOffset) * 60 * 1000;
                     endTime = new Date(endTime.getTime() + offsetDifferenceMs);
                 }
-                config.script = config.script.replace('__END_TIME__', endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                config.script = (config.script || '').replace('__END_TIME__', endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             }
 
             const timerControls = config.hasTimer ? `
@@ -257,8 +246,6 @@
                 </div>` : '';
 
             const contextHtml = config.context ? `<div class="mt-4"><h3>Context</h3><p class="text-sm">${config.context}</p></div>` : '';
-            
-            // Build the "Next Step" buttons dynamically based on the SOP flow
             const nextStepHtml = buildNextStepButtons(screenId);
 
             return `
@@ -288,17 +275,38 @@
                 'baseline': [{ text: 'Go to Task Intro', screen: 'taskIntroduction' }],
                 'taskIntroduction': [{ text: 'Start Silent Reading', screen: 'silentReading', task: 'silentReading' }],
                 'silentReading': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud1' }],
-                'readAloud1': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2' }],
-                'readAloud2': [{ text: 'Start Challenge Instructions', screen: 'challengeInstructions' }],
-                'challengeInstructions': [{ text: 'Start Song 1', screen: 'singASong', task: 'singASong1' }],
-                'singASong1': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'singASong2' }],
-                'singASong2': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'singASong3' }],
-                'singASong3': [{ text: 'Go to Post-Task Survey', screen: 'postTaskSurvey' }],
-                'countdown': [{ text: `Start ${allConfigs[currentGameState.taskContent.nextTask]?.title || 'Next Task'}`, screen: allConfigs[currentGameState.taskContent.nextTask]?.taskContent ? 'singASong' : 'readAloud', task: currentGameState.taskContent.nextTask }],
+                'countdown': [{ text: `Start ${allConfigs[currentGameState.taskContent.nextTask]?.title || 'Next Task'}`, screen: allConfigs[currentGameState.taskContent.nextTask]?.taskContent ? (currentGameState.taskContent.nextTask.startsWith('sing') ? 'singASong' : 'readAloud') : 'readAloud', task: currentGameState.taskContent.nextTask }],
+                'readAloud': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2' }],
+                'challengeInstructions': [{ text: 'Start Song 1 ("Teapot")', screen: 'singASong', task: 'singASong1_content' }],
+                'singASong': [
+                    { text: 'Start Countdown (for Song 2)', screen: 'countdown', nextTask: 'singASong2_content' },
+                    { text: 'Start Countdown (for Song 3)', screen: 'countdown', nextTask: 'singASong3_content' },
+                    { text: 'Go to Post-Task Survey', screen: 'postTaskSurvey' }
+                ],
                 'postTaskSurvey': [{ text: 'Begin Meal', screen: 'meal' }],
                 'meal': [{ text: 'Finish Protocol', screen: 'complete' }],
             };
-            const buttons = flow[currentId] || [];
+            
+            let buttons = [];
+            if (currentId === 'countdown') {
+                const nextTaskKey = currentGameState.taskContent?.nextTask;
+                const nextTaskInfo = allConfigs[nextTaskKey];
+                if(nextTaskInfo) {
+                    const nextScreen = nextTaskKey.startsWith('sing') ? 'singASong' : 'readAloud';
+                    buttons.push({ text: `Start ${nextTaskInfo.title}`, screen: nextScreen, task: nextTaskKey });
+                }
+            } else if (currentId === 'readAloud') {
+                 // After readAloud1, go to countdown for readAloud2. After readAloud2, go to instructions.
+                if (currentGameState.taskContent.passageTitle === 'Paper Clip') {
+                    buttons.push({ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2_content' });
+                } else {
+                    buttons.push({ text: 'Start Challenge Instructions', screen: 'challengeInstructions' });
+                }
+            }
+            else {
+                buttons = flow[currentId] || [];
+            }
+
             return buttons.map(btn => {
                 const taskContent = allConfigs[btn.task]?.taskContent ? `, JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(allConfigs[btn.task].taskContent))}'))` : (btn.nextTask ? `, { nextTask: '${btn.nextTask}' }` : '');
                 return `<button class="control-btn btn-next" onclick="sendCommand({type: 'screen', screenId: '${btn.screen}'${taskContent}})">${btn.text}</button>`;
@@ -307,4 +315,3 @@
     </script>
 </body>
 </html>
-
