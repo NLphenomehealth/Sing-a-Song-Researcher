@@ -79,46 +79,51 @@
         let sessionStartTime = null;
         let currentGameState = {};
         let allConfigs = {}; 
+        let heartbeatInterval = null;
 
         function initializeContent() {
             allConfigs = {
                 'welcome': {
                     title: 'Introduction & Pre-Test', participantSees: "Participant is at the welcome screen.",
-                    script: "Hi, I'm going to be administering your challenge today as part of your participation in the BETA Pilot Study. The purpose of this test is to better understand the association between stress and blood glucose levels.\n\nBefore we begin, I'd like to confirm a few things...",
-                    actions: ["Confirm participant can see and hear you.", "Confirm they have adequate time and the beverage nearby.", "Confirm fasting, activity, and device status.", "Document any deviations."]
+                    script: "Hi, I'm going to be administering your challenge today as part of your participation in the BETA Pilot Study. The purpose of this test is to better understand the association between stress and blood glucose levels.\n\nBefore we begin, I'd like to confirm a few things. Firstly, could you please ensure that your video window is expanded to full screen? Can you hear and see me well?\n\nThis challenge should take about 30 minutes and thereafter you'll be expected to consume the (e.g., [see challenge tracker for type of beverage]) beverage provided to you and will have to refrain from exercise activities for 90 minutes. Ideally, you stay seated for this time. Do you still have adequate time this morning to complete this full procedure?\n\nDo you have the provided beverage nearby, ready to consume?\n\nYou are expected to fast for 8 hours prior to this challenge, and reduce stress-inducing activities prior to. Were you able to fast? Is there anything you did this morning that you want to mention that involved strenuous exercise, or a stressful exposure?\n\nCould you please make sure you have your smartphone nearby and open up the MyT1Diabetes app. Please put your phone on silent for the duration of this procedure, and avoid looking at or checking your phone unless instructed by me.\n\nLastly, could you confirm that you are wearing all of your study devices. This includes the Empatica EmbracePlus, the Oura ring, and the CGM. Are the devices all charged and working?",
+                    actions: ["Document how well the participant was able to follow the pre-challenge instructions and any deviations from these instructions."]
                 },
                 'preBaselineSurvey': {
                     title: 'Stress Baseline Survey', participantSees: "Participant is being asked to log their stress level.",
-                    script: "Next I'm going to ask you to rate your current stress levels using the scale provided on the screen. Please log your response by opening your study app and adding your response to the I've Noticed.. feature labelling your entry as Stress 0= [answer].\n\nNow we're going to begin. I'm going to start recording the call now...",
-                    actions: ["<strong>Start recording the call.</strong>"]
+                    script: "Next I'm going to ask you to rate your current stress levels using the scale provided on the screen. Please log your response by opening your study app and adding your response to the I've Noticed.. feature labelling your entry as Stress 0= [answer].\n\nNow we're going to begin.\n\nI'm going to start recording the call now so that your performance on the upcoming tasks can be later scored by additional evaluators.",
+                    actions: ["Start recording the call."]
                 },
                 'baseline': {
                     title: 'Resting Baseline', participantSees: "Participant sees a 3-minute timer and instructions to relax.", hasTimer: true, timerDefault: '3:00',
                     script: "For the next 3 minutes, please remain seated. Relax, and try to clear your mind, and remain still and quiet. You can leave your eyes open, or close them if you prefer. Please leave your camera on for the duration of this procedure. I'm going to step away, but we will still be monitoring you.",
-                    actions: ["Turn off your video, but continue to monitor participant.", "When timer ends, turn camera back on."]
+                    actions: ["Turns off video, but continues to monitor participant."]
                 },
                 'taskIntroduction': {
                     title: 'Task Introduction', participantSees: "Participant is reading the overall task instructions.",
-                    script: "You are about to see different types of messages with instructions on your screen. Some will ask you to conduct silent reading, some will ask you to read aloud, while others will ask you to complete a task once the countdown reaches zero...",
+                    script: "You are about to see different types of messages with instructions on your screen. Some will ask you to conduct silent reading, some will ask you to read aloud, while others will ask you to complete a task once the countdown reaches zero. Each task will have a countdown timer. When the timer reaches 00.00, it will be time to move onto the next screen. There will be a transition countdown in between each task. During this countdown you should remain seated and refrain from any activity. Please follow the instructions on each screen as soon as they are presented.",
                     actions: ["Turn camera back on.", "Provide verbal instructions."]
                 },
                 'silentReading': {
                     title: 'Silent Reading', participantSees: "Participant is reading a passage silently.", hasTimer: true, timerDefault: '0:12',
-                    actions: ["Observe participant silently reading until timer reaches 00:00."],
+                    script: "Please read the following passage silently. The timer will begin now.",
+                    actions: ["Start the reading timer.", "Observe participant silently reading until timer reaches 00:00."],
                     taskContent: { title: 'Read the following passage Silently', passageTitle: 'Vacuum Cleaner', passageBody: 'A vacuum cleaner, also known simply as a vacuum, is a device that uses suction-often with agitation-to remove dirt and debris from carpets, hard floors, and other surfaces...'}
                 },
-                'readAloud': { // This is a generic screen, content is injected
+                'readAloud': { 
                     title: 'Read-Aloud Task', participantSees: "Participant is reading a passage aloud.", hasTimer: true, timerDefault: '0:12',
-                    actions: ["Observe participant reading aloud until timer reaches 00:00."]
+                    script: "Please read the following passage aloud. The timer will begin now.",
+                    actions: ["Start the timer.", "Observe participant reading aloud until timer reaches 00:00."]
                 },
                 'challengeInstructions': {
                     title: 'Read-Aloud Challenge Instructions', participantSees: "Participant is reading the singing challenge instructions.", hasTimer: true, timerDefault: '1:00',
-                    actions: ["Observe participant reading aloud until the timer reaches 00:00."],
+                    script: "Please read the following challenge instructions aloud. The timer will begin now.",
+                    actions: ["Start the timer.", "Observe participant reading aloud until the timer reaches 00:00."],
                     taskContent: { title: 'Read the following Challenge instructions Aloud', passageTitle: '', passageBody: 'You will now prepare for a singing challenge. Your performance will be recorded and evaluated by a music professional. Songs you may be asked to sing are listed below. If you finish a song before the time ends. Start over from the beginning until the timer reaches 00:00.\n\nOnce you see the screen with lyrics to the song, begin singing!\n\nSong list:\n• I\'m a Little Teapot\n• Twinkle, Twinkle, Little Star\n• Mary Had a Little Lamb'}
                 },
-                 'singASong': { // Generic screen, content injected
+                 'singASong': { 
                     title: 'Sing-a-Song Challenge', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
-                    actions: ["Observe participant singing. If they finish early, ask them to start again."]
+                    script: "Please sing the following song aloud. The timer will begin now.",
+                    actions: ["Start the timer.", "Observe participant singing aloud until the timer reaches 00:00.", "Note: If the participant finishes the song before the timer reaches 00:00, ask them to start again from the beginning until the timer reaches 00:00."]
                 },
                 'countdown': {
                     title: 'Countdown', participantSees: "Participant sees a 1-minute countdown.", hasTimer: true, timerDefault: '1:00',
@@ -127,20 +132,20 @@
                 'postTaskSurvey': {
                     title: 'Post-Task Stress Survey', participantSees: "Participant is being asked to log their stress level.",
                     script: "That concludes the performance tasks.\n\nI'm going to ask you to again rate your current level of stress using the I've noticed.. feature in the study app using the label Stress 1= [Answer].",
-                    actions: ["Wait for the participant to confirm they have logged their stress level."]
+                    actions: ["Wait for participants to complete I've noticed entry."]
                 },
                 'meal': {
                     title: 'Post-Task Meal', participantSees: "Participant sees a 5-minute timer to consume the beverage.", hasTimer: true, timerDefault: '5:00',
                     script: "When you have completed adding your entry into the I've noticed feature, please consume the provided liquid meal within five minutes. I will wait until you're finished.",
-                    actions: ["Start the five minute meal timer.", "Observe participant during consuming meal."],
-                    context: "The participant needs to drink the entire beverage within 5 minutes. You can explain or express the significance of this if they are taking longer than usual..."
+                    actions: ["Start the five minute meal timer.", "Observe participant during consuming meal until timer reaches 00:00."],
+                    context: "The participant needs to drink the entire beverage within 5 minutes. You can explain or express the significance of this if they are taking longer than usual. Drinks should also not be consumed in too short a time. Aim for approximately 5 minutes across all participants."
                 },
                 'complete': {
                     title: 'Debrief & Close', participantSees: "Participant sees the 'Challenge Complete' screen.",
-                    script: "Thank you for completing today's tasks. For the next 90 minutes, until approximately __END_TIME__, please stay seated as much as possible and avoid food, beverages, and strenuous or stressful activity...",
-                    actions: ["Stop recording, end video call.", "If Final Challenge: Complete a debrief (Appendix B)."]
+                    script: "Thank you for completing today's tasks. For the next 90 minutes, please stay seated as much as possible and avoid food, beverages, and strenuous or stressful activity (Tell the participant the actual time they can resume activities for ease, e.g., for example at 10:30am). After the 90-minute period, you may resume your normal routine. If your blood sugar falls out of range, either below 70 mg/dL or above 250 mg/dL, please treat as needed and contact the study coordinator. Do you have any questions before we end?",
+                    actions: ["Stop recording, end video call.", "If Final Challenge: If this is the last stress challenge for the participant, complete a debrief (Appendix B)."]
                 },
-                // Specific task content definitions
+                // Specific task content definitions used for sending to participant
                 'readAloud1_content': { taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Paper Clip', passageBody: 'A paper clip (or paperclip) is a small steel-wire device (sometimes plastic-coated) bent into loops that hold sheets of paper together by torsion and friction...'}},
                 'readAloud2_content': { taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Wood', passageBody: 'Wood is the structural xylem tissue in the stems and roots of trees and other woody plants—a composite of cellulose fibers (strong under tension) embedded in lignin (resistant to compression)...'}},
                 'singASong1_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'I\'m a Little Teapot', passageBody: 'I\'m a little teapot, short and stout. Here is my handle, here is my spout. When the water\'s boiling, hear me shout: "Tip me over, pour me out!"...'}},
@@ -178,19 +183,52 @@
             const commandWithId = { ...command, commandId: crypto.randomUUID(), issuedAt: serverTimestamp() };
             setDoc(sessionRef, { command: commandWithId }, { merge: true });
         }
-        window.sendCommand = sendCommand;
+
+        function startHeartbeat() {
+            stopHeartbeat(); // Ensure no multiple intervals are running
+            heartbeatInterval = setInterval(() => {
+                if (currentSessionId) {
+                    const appId = "sing-a-song-c80f1";
+                    const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, currentSessionId);
+                    setDoc(sessionRef, { researcherHeartbeat: serverTimestamp() }, { merge: true });
+                }
+            }, 30000); // Send an update every 30 seconds
+        }
+
+        function stopHeartbeat() {
+            clearInterval(heartbeatInterval);
+        }
+        
+        window.sendScreenCommand = (screenId, taskKey = null, nextTaskKey = null) => {
+            const command = { type: 'screen', screenId };
+            if (taskKey && allConfigs[taskKey]?.taskContent) {
+                command.taskContent = allConfigs[taskKey].taskContent;
+            }
+            if (nextTaskKey) {
+                command.taskContent = { ...(command.taskContent || {}), nextTask: nextTaskKey };
+            }
+            sendCommand(command);
+        };
+        window.sendTimerStart = () => sendCommand({type: 'timer', action: 'start'});
+        window.sendTimerStop = () => sendCommand({type: 'timer', action: 'stop'});
+        window.sendTimerReset = () => sendCommand({type: 'timer', action: 'reset'});
+
 
         window.connectToSession = () => {
             const sessionId = document.getElementById('sessionIdField').value.trim().toUpperCase();
             if (sessionId.length !== 6) { return; }
             document.getElementById('error-message').textContent = 'Connecting...';
             if (unsubscribe) unsubscribe();
+            stopHeartbeat();
             currentSessionId = sessionId;
             const appId = "sing-a-song-c80f1";
             const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, sessionId);
             unsubscribe = onSnapshot(sessionRef, (doc) => {
                 if (doc.exists()) {
-                    if (!sessionStartTime) sessionStartTime = new Date();
+                    if (!sessionStartTime) {
+                        sessionStartTime = new Date();
+                        startHeartbeat();
+                    }
                     document.getElementById('error-message').textContent = '';
                     document.getElementById('sessionInput').style.display = 'none';
                     document.getElementById('mirror-view').style.display = 'block';
@@ -198,6 +236,10 @@
                 } else {
                     document.getElementById('error-message').textContent = `Session "${sessionId}" not found.`;
                 }
+            }, (error) => {
+                console.error("Snapshot error:", error);
+                document.getElementById('error-message').textContent = "Error connecting to the session.";
+                stopHeartbeat();
             });
         }
         
@@ -207,6 +249,7 @@
             if (newState.screenId !== currentScreenId) {
                 currentScreenId = newState.screenId;
                 document.getElementById('all-screens-container').innerHTML = getScreenHtml(newState);
+                document.getElementById('next-screen-container').innerHTML = buildNextStepButtons(newState.screenId);
             }
             updateDynamicContent(newState);
             document.getElementById('session-id-display').innerHTML = `Mirroring Session: <span class="font-bold">${newState.sessionId || ''}</span>`;
@@ -240,13 +283,12 @@
 
             const timerControls = config.hasTimer ? `
                 <div class="flex justify-center items-center gap-4 mt-6">
-                    <button class="control-btn btn-start" onclick="sendCommand({type: 'timer', action: 'start'})">Start</button>
-                    <button class="control-btn btn-stop" onclick="sendCommand({type: 'timer', action: 'stop'})">Stop</button>
-                    <button class="control-btn btn-reset" onclick="sendCommand({type: 'timer', action: 'reset'})">Reset</button>
+                    <button class="control-btn btn-start" onclick="sendTimerStart()">Start</button>
+                    <button class="control-btn btn-stop" onclick="sendTimerStop()">Stop</button>
+                    <button class="control-btn btn-reset" onclick="sendTimerReset()">Reset</button>
                 </div>` : '';
 
             const contextHtml = config.context ? `<div class="mt-4"><h3>Context</h3><p class="text-sm">${config.context}</p></div>` : '';
-            const nextStepHtml = buildNextStepButtons(screenId);
 
             return `
                 <div class="max-w-4xl mx-auto">
@@ -255,14 +297,10 @@
                     ${config.hasTimer ? `<div class="text-8xl font-mono font-bold my-4 text-gray-800 timer-display">${state.timer?.value || config.timerDefault}</div>` : ''}
                     ${timerControls}
                     <div class="info-box">
-                        ${config.script ? `<h3>Researcher Script</h3><div class="script-text mb-4">${config.script}</div>` : ''}
-                        <h3>RC Instructions</h3>
+                        ${config.script ? `<h3>RC Script</h3><div class="script-text mb-4">${config.script}</div>` : ''}
+                        <h3>RC Actions</h3>
                         <ul class="list-disc list-inside space-y-1">${(config.actions || []).map(a => `<li>${a}</li>`).join('')}</ul>
                         ${contextHtml}
-                    </div>
-                    <div class="mt-6 border-t pt-4">
-                        <h3 class="font-bold text-lg mb-2">Next Step</h3>
-                        <div class="flex justify-center gap-2 flex-wrap">${nextStepHtml}</div>
                     </div>
                 </div>
             `;
@@ -274,15 +312,11 @@
                 'preBaselineSurvey': [{ text: 'Start Resting Baseline', screen: 'baseline' }],
                 'baseline': [{ text: 'Go to Task Intro', screen: 'taskIntroduction' }],
                 'taskIntroduction': [{ text: 'Start Silent Reading', screen: 'silentReading', task: 'silentReading' }],
-                'silentReading': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud1' }],
-                'countdown': [{ text: `Start ${allConfigs[currentGameState.taskContent.nextTask]?.title || 'Next Task'}`, screen: allConfigs[currentGameState.taskContent.nextTask]?.taskContent ? (currentGameState.taskContent.nextTask.startsWith('sing') ? 'singASong' : 'readAloud') : 'readAloud', task: currentGameState.taskContent.nextTask }],
-                'readAloud': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2' }],
+                'silentReading': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud1_content' }],
+                'countdown': [], // Handled dynamically
+                'readAloud': [], // Handled dynamically
                 'challengeInstructions': [{ text: 'Start Song 1 ("Teapot")', screen: 'singASong', task: 'singASong1_content' }],
-                'singASong': [
-                    { text: 'Start Countdown (for Song 2)', screen: 'countdown', nextTask: 'singASong2_content' },
-                    { text: 'Start Countdown (for Song 3)', screen: 'countdown', nextTask: 'singASong3_content' },
-                    { text: 'Go to Post-Task Survey', screen: 'postTaskSurvey' }
-                ],
+                'singASong': [], // Handled dynamically
                 'postTaskSurvey': [{ text: 'Begin Meal', screen: 'meal' }],
                 'meal': [{ text: 'Finish Protocol', screen: 'complete' }],
             };
@@ -293,23 +327,31 @@
                 const nextTaskInfo = allConfigs[nextTaskKey];
                 if(nextTaskInfo) {
                     const nextScreen = nextTaskKey.startsWith('sing') ? 'singASong' : 'readAloud';
-                    buttons.push({ text: `Start ${nextTaskInfo.title}`, screen: nextScreen, task: nextTaskKey });
+                    buttons.push({ text: `Start ${nextTaskInfo.taskContent.passageTitle}`, screen: nextScreen, task: nextTaskKey });
                 }
             } else if (currentId === 'readAloud') {
-                 // After readAloud1, go to countdown for readAloud2. After readAloud2, go to instructions.
                 if (currentGameState.taskContent.passageTitle === 'Paper Clip') {
                     buttons.push({ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2_content' });
                 } else {
                     buttons.push({ text: 'Start Challenge Instructions', screen: 'challengeInstructions' });
                 }
+            } else if (currentId === 'singASong') {
+                 if (currentGameState.taskContent.passageTitle.includes('Teapot')) {
+                    buttons.push({ text: 'Start Countdown (for Song 2)', screen: 'countdown', nextTask: 'singASong2_content' });
+                } else if (currentGameState.taskContent.passageTitle.includes('Star')) {
+                    buttons.push({ text: 'Start Countdown (for Song 3)', screen: 'countdown', nextTask: 'singASong3_content' });
+                } else {
+                    buttons.push({ text: 'Go to Post-Task Survey', screen: 'postTaskSurvey' });
+                }
             }
             else {
                 buttons = flow[currentId] || [];
             }
-
+            
             return buttons.map(btn => {
-                const taskContent = allConfigs[btn.task]?.taskContent ? `, JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(allConfigs[btn.task].taskContent))}'))` : (btn.nextTask ? `, { nextTask: '${btn.nextTask}' }` : '');
-                return `<button class="control-btn btn-next" onclick="sendCommand({type: 'screen', screenId: '${btn.screen}'${taskContent}})">${btn.text}</button>`;
+                const taskArg = btn.task ? `'${btn.task}'` : 'null';
+                const nextTaskArg = btn.nextTask ? `'${btn.nextTask}'` : 'null';
+                return `<button class="control-btn btn-next" onclick="sendScreenCommand('${btn.screen}', ${taskArg}, ${nextTaskArg})">${btn.text}</button>`;
             }).join('');
         }
     </script>
