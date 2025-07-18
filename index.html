@@ -1,1 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sing-a-Song Researcher Mirror</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .screen-mirror { transition: opacity 0.5s ease-in-out; }
+        .hidden { display: none; }
+        .control-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            color: white;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .btn-start { background-color: #22c55e; }
+        .btn-stop { background-color: #ef4444; }
+        .btn-reset { background-color: #64748b; }
+        .btn-next { background-color: #4f46e5; }
+        .info-box {
+            border-left: 4px solid #e5e7eb;
+            padding-left: 1rem;
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+        .info-box h3 {
+            font-weight: 700;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+        .script-text {
+            background-color: #f3f4f6;
+            border-left: 4px solid #6366f1;
+            padding: 1rem;
+            font-style: italic;
+            border-radius: 0.25rem;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body class="bg-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="main-content" class="w-full">
+        <div id="app-container" class="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl max-w-5xl w-full text-center relative transition-all duration-500 mx-auto">
+            
+            <div id="sessionInput" class="screen-mirror">
+                <h1 class="text-4xl font-extrabold text-gray-800 mb-4">Sing-a-Song Researcher Mirror</h1>
+                <p class="text-gray-600 mb-6">Enter the 6-character Session ID from the participant's screen to connect.</p>
+                <div class="flex justify-center items-center gap-4">
+                    <input type="text" id="sessionIdField" maxlength="6" class="form-input text-center text-2xl font-mono uppercase w-48 px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                    <button id="connectBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg text-lg" onclick="connectToSession()">Connect</button>
+                </div>
+                <p id="error-message" class="text-red-500 mt-4 font-semibold h-6"></p>
+            </div>
+
+            <div id="mirror-view" class="hidden">
+                <div id="session-id-display" class="absolute top-6 left-6 bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-2 rounded-lg"></div>
+                <div id="next-screen-container" class="absolute top-6 right-6"></div>
+                <div id="all-screens-container" class="pt-12"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+        
+        let db, auth;
+        let unsubscribe = null;
+        let currentSessionId = null;
+        let sessionStartTime = null;
+        let allConfigs = {}; // Will hold all our script/content data
+
+        // --- All Screen Configurations and Content ---
+        function initializeContent() {
+            allConfigs = {
+                'welcome': {
+                    title: 'Introduction & Pre-Test', participantSees: "Participant is at the welcome screen.",
+                    script: "Hi, I'm going to be administering your challenge today as part of your participation in the BETA Pilot Study. The purpose of this test is to better understand the association between stress and blood glucose levels.\n\nBefore we begin, I'd like to confirm a few things...",
+                    actions: ["Confirm participant can see and hear you.", "Confirm they have adequate time and the beverage nearby.", "Confirm fasting, activity, and device status.", "Document any deviations."]
+                },
+                'preBaselineSurvey': {
+                    title: 'Stress Baseline Survey', participantSees: "Participant is being asked to log their stress level.",
+                    script: "Next I'm going to ask you to rate your current stress levels using the scale provided on the screen. Please log your response by opening your study app and adding your response to the I've Noticed.. feature labelling your entry as Stress 0= [answer].\n\nNow we're going to begin. I'm going to start recording the call now...",
+                    actions: ["<strong>Start recording the call.</strong>"]
+                },
+                'baseline': {
+                    title: 'Resting Baseline', participantSees: "Participant sees a 3-minute timer and instructions to relax.", hasTimer: true, timerDefault: '3:00',
+                    script: "For the next 3 minutes, please remain seated. Relax, and try to clear your mind, and remain still and quiet. You can leave your eyes open, or close them if you prefer. Please leave your camera on for the duration of this procedure. I'm going to step away, but we will still be monitoring you.",
+                    actions: ["Turn off your video, but continue to monitor participant.", "When timer ends, turn camera back on."]
+                },
+                'taskIntroduction': {
+                    title: 'Task Introduction', participantSees: "Participant is reading the overall task instructions.",
+                    script: "You are about to see different types of messages with instructions on your screen. Some will ask you to conduct silent reading, some will ask you to read aloud, while others will ask you to complete a task once the countdown reaches zero...",
+                    actions: ["Turn camera back on.", "Provide verbal instructions."]
+                },
+                'silentReading': {
+                    title: 'Silent Reading', participantSees: "Participant is reading a passage silently.", hasTimer: true, timerDefault: '0:12',
+                    actions: ["Observe participant silently reading until timer reaches 00:00."],
+                    taskContent: { title: 'Read the following passage Silently', passageTitle: 'Vacuum Cleaner', passageBody: 'A vacuum cleaner, also known simply as a vacuum, is a device that uses suction-often with agitation-to remove dirt and debris from carpets, hard floors, and other surfaces...'}
+                },
+                'readAloud1': {
+                    title: 'Read-Aloud Task 1', participantSees: "Participant is reading a passage aloud.", hasTimer: true, timerDefault: '0:12',
+                    actions: ["Observe participant reading aloud until timer reaches 00:00."],
+                    taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Paper Clip', passageBody: 'A paper clip (or paperclip) is a small steel-wire device (sometimes plastic-coated) bent into loops that hold sheets of paper together by torsion and friction...'}
+                },
+                'readAloud2': {
+                    title: 'Read-Aloud Task 2', participantSees: "Participant is reading a passage aloud.", hasTimer: true, timerDefault: '0:12',
+                    actions: ["Observe participant reading aloud until timer reaches 00:00."],
+                    taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Wood', passageBody: 'Wood is the structural xylem tissue in the stems and roots of trees and other woody plants—a composite of cellulose fibers (strong under tension) embedded in lignin (resistant to compression)...'}
+                },
+                'challengeInstructions': {
+                    title: 'Read-Aloud Challenge Instructions', participantSees: "Participant is reading the singing challenge instructions.", hasTimer: true, timerDefault: '1:00',
+                    actions: ["Observe participant reading aloud until the timer reaches 00:00."],
+                    taskContent: { title: 'Read the following Challenge instructions Aloud', passageTitle: '', passageBody: 'You will now prepare for a singing challenge. Your performance will be recorded and evaluated by a music professional. Songs you may be asked to sing are listed below. If you finish a song before the time ends. Start over from the beginning until the timer reaches 00:00.\n\nOnce you see the screen with lyrics to the song, begin singing!\n\nSong list:\n• I\'m a Little Teapot\n• Twinkle, Twinkle, Little Star\n• Mary Had a Little Lamb'}
+                },
+                'singASong1': {
+                    title: 'Sing-a-Song Challenge 1', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
+                    actions: ["Observe participant singing. If they finish early, ask them to start again."],
+                    taskContent: { title: 'Sing the following song Aloud', passageTitle: 'I\'m a Little Teapot', passageBody: 'I\'m a little teapot, short and stout. Here is my handle, here is my spout. When the water\'s boiling, hear me shout: "Tip me over, pour me out!"...'}
+                },
+                'singASong2': {
+                    title: 'Sing-a-Song Challenge 2', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
+                    actions: ["Observe participant singing. If they finish early, ask them to start again."],
+                    taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Twinkle, Twinkle, Little Star', passageBody: 'Twinkle, twinkle, little star, How I wonder what you are! Up above the world so high, Like a diamond in the sky...'}
+                },
+                'singASong3': {
+                    title: 'Sing-a-Song Challenge 3', participantSees: "Participant is singing.", hasTimer: true, timerDefault: '1:00',
+                    actions: ["Observe participant singing. If they finish early, ask them to start again."],
+                    taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Mary Had a Little Lamb', passageBody: 'Mary had a little lamb, little lamb, little lamb; Mary had a little lamb, its fleece was white as snow...'}
+                },
+                'countdown': {
+                    title: 'Countdown', participantSees: "Participant sees a 1-minute countdown.", hasTimer: true, timerDefault: '1:00',
+                    actions: ["Observe participant during countdown until timer reaches 00:00."]
+                },
+                'postTaskSurvey': {
+                    title: 'Post-Task Stress Survey', participantSees: "Participant is being asked to log their stress level.",
+                    script: "That concludes the performance tasks.\n\nI'm going to ask you to again rate your current level of stress using the I've noticed.. feature in the study app using the label Stress 1= [Answer].",
+                    actions: ["Wait for the participant to confirm they have logged their stress level."]
+                },
+                'meal': {
+                    title: 'Post-Task Meal', participantSees: "Participant sees a 5-minute timer to consume the beverage.", hasTimer: true, timerDefault: '5:00',
+                    script: "When you have completed adding your entry into the I've noticed feature, please consume the provided liquid meal within five minutes. I will wait until you're finished.",
+                    actions: ["Start the five minute meal timer.", "Observe participant during consuming meal."],
+                    context: "The participant needs to drink the entire beverage within 5 minutes. You can explain or express the significance of this if they are taking longer than usual..."
+                },
+                'complete': {
+                    title: 'Debrief & Close', participantSees: "Participant sees the 'Challenge Complete' screen.",
+                    script: "Thank you for completing today's tasks. For the next 90 minutes, until approximately __END_TIME__, please stay seated as much as possible and avoid food, beverages, and strenuous or stressful activity...",
+                    actions: ["Stop recording, end video call.", "If Final Challenge: Complete a debrief (Appendix B)."]
+                }
+            };
+        }
+
+        window.onload = function() {
+            initializeContent();
+            const firebaseConfig = {
+                apiKey: "AIzaSyDcItjK2ZVCH-QqhjyOrh8FCfjqrqC63EM",
+                authDomain: "sing-a-song-6f6df.firebaseapp.com",
+                projectId: "sing-a-song-6f6df",
+                storageBucket: "sing-a-song-6f6df.appspot.com",
+                messagingSenderId: "701648987527",
+                appId: "1:701648987527:web:db7cc710226d44b3ed9f22"
+            };
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('error');
+                signInAnonymously(auth).catch(error => console.error("Researcher auth error:", error));
+            } catch (e) {
+                console.error("Initialization failed:", e);
+                document.getElementById('main-content').innerHTML = `<div class="bg-white p-8 rounded-lg shadow-xl"><h1 class="text-2xl font-bold text-red-600">Error during initialization.</h1></div>`;
+            }
+        };
+
+        function sendCommand(command) {
+            if (!currentSessionId) return;
+            const appId = "sing-a-song-6f6df";
+            const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, currentSessionId);
+            const commandWithId = { ...command, commandId: crypto.randomUUID(), issuedAt: serverTimestamp() };
+            setDoc(sessionRef, { command: commandWithId }, { merge: true });
+        }
+        window.sendCommand = sendCommand;
+
+        window.connectToSession = () => {
+            const sessionId = document.getElementById('sessionIdField').value.trim().toUpperCase();
+            if (sessionId.length !== 6) { return; }
+            document.getElementById('error-message').textContent = 'Connecting...';
+            if (unsubscribe) unsubscribe();
+            currentSessionId = sessionId;
+            const appId = "sing-a-song-6f6df";
+            const sessionRef = doc(db, `artifacts/${appId}/public/data/sessions`, sessionId);
+            unsubscribe = onSnapshot(sessionRef, (doc) => {
+                if (doc.exists()) {
+                    if (!sessionStartTime) sessionStartTime = new Date();
+                    document.getElementById('error-message').textContent = '';
+                    document.getElementById('sessionInput').style.display = 'none';
+                    document.getElementById('mirror-view').style.display = 'block';
+                    renderState(doc.data());
+                } else {
+                    document.getElementById('error-message').textContent = `Session "${sessionId}" not found.`;
+                }
+            });
+        }
+        
+        let currentScreenId = null;
+        function renderState(newState) {
+            if (newState.screenId !== currentScreenId) {
+                currentScreenId = newState.screenId;
+                document.getElementById('all-screens-container').innerHTML = getScreenHtml(newState);
+            }
+            updateDynamicContent(newState);
+            document.getElementById('session-id-display').innerHTML = `Mirroring Session: <span class="font-bold">${newState.sessionId || ''}</span>`;
+        }
+
+        function updateDynamicContent(state) {
+            const timerValue = state.timer?.value;
+            const timerEl = document.querySelector(`.timer-display`);
+            if (timerEl && timerEl.textContent !== timerValue) timerEl.textContent = timerValue;
+            const isRunning = state.timer?.running;
+            document.querySelector(`.btn-start`)?.classList.toggle('hidden', isRunning);
+            document.querySelector(`.btn-stop`)?.classList.toggle('hidden', !isRunning);
+        }
+
+        function getScreenHtml(state) {
+            const screenId = state.screenId;
+            let config = allConfigs[screenId] || {};
+            
+            // For tasks that share a screen but have different content
+            if (state.taskContent && state.taskContent.title) {
+                 config = { ...config, ...state.taskContent };
+            }
+
+            if (screenId === 'complete' && sessionStartTime) {
+                let endTime = new Date(sessionStartTime.getTime() + (2 * 60 * 60 * 1000));
+                if (state.timezoneOffset !== undefined) {
+                    const offsetDifferenceMs = (sessionStartTime.getTimezoneOffset() - state.timezoneOffset) * 60 * 1000;
+                    endTime = new Date(endTime.getTime() + offsetDifferenceMs);
+                }
+                config.script = config.script.replace('__END_TIME__', endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+
+            const timerControls = config.hasTimer ? `
+                <div class="flex justify-center items-center gap-4 mt-6">
+                    <button class="control-btn btn-start" onclick="sendCommand({type: 'timer', action: 'start'})">Start</button>
+                    <button class="control-btn btn-stop" onclick="sendCommand({type: 'timer', action: 'stop'})">Stop</button>
+                    <button class="control-btn btn-reset" onclick="sendCommand({type: 'timer', action: 'reset'})">Reset</button>
+                </div>` : '';
+
+            const contextHtml = config.context ? `<div class="mt-4"><h3>Context</h3><p class="text-sm">${config.context}</p></div>` : '';
+            
+            // Build the "Next Step" buttons dynamically based on the SOP flow
+            const nextStepHtml = buildNextStepButtons(screenId);
+
+            return `
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">${config.title || ''}</h2>
+                    <p class="text-gray-500 mb-6">${config.participantSees || ''}</p>
+                    ${config.hasTimer ? `<div class="text-8xl font-mono font-bold my-4 text-gray-800 timer-display">${state.timer?.value || config.timerDefault}</div>` : ''}
+                    ${timerControls}
+                    <div class="info-box">
+                        ${config.script ? `<h3>Researcher Script</h3><div class="script-text mb-4">${config.script}</div>` : ''}
+                        <h3>RC Instructions</h3>
+                        <ul class="list-disc list-inside space-y-1">${(config.actions || []).map(a => `<li>${a}</li>`).join('')}</ul>
+                        ${contextHtml}
+                    </div>
+                    <div class="mt-6 border-t pt-4">
+                        <h3 class="font-bold text-lg mb-2">Next Step</h3>
+                        <div class="flex justify-center gap-2 flex-wrap">${nextStepHtml}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildNextStepButtons(currentId) {
+            const flow = {
+                'welcome': [{ text: 'Begin Baseline', screen: 'preBaselineSurvey' }],
+                'preBaselineSurvey': [{ text: 'Start Resting Baseline', screen: 'baseline' }],
+                'baseline': [{ text: 'Go to Task Intro', screen: 'taskIntroduction' }],
+                'taskIntroduction': [{ text: 'Start Silent Reading', screen: 'silentReading', task: 'silentReading' }],
+                'silentReading': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud1' }],
+                'readAloud1': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2' }],
+                'readAloud2': [{ text: 'Start Challenge Instructions', screen: 'challengeInstructions' }],
+                'challengeInstructions': [{ text: 'Start Song 1', screen: 'singASong', task: 'singASong1' }],
+                'singASong1': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'singASong2' }],
+                'singASong2': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'singASong3' }],
+                'singASong3': [{ text: 'Go to Post-Task Survey', screen: 'postTaskSurvey' }],
+                'countdown': [{ text: `Start ${allConfigs[currentGameState.taskContent.nextTask]?.title || 'Next Task'}`, screen: allConfigs[currentGameState.taskContent.nextTask]?.taskContent ? 'singASong' : 'readAloud', task: currentGameState.taskContent.nextTask }],
+                'postTaskSurvey': [{ text: 'Begin Meal', screen: 'meal' }],
+                'meal': [{ text: 'Finish Protocol', screen: 'complete' }],
+            };
+            const buttons = flow[currentId] || [];
+            return buttons.map(btn => {
+                const taskContent = allConfigs[btn.task]?.taskContent ? `, JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(allConfigs[btn.task].taskContent))}'))` : (btn.nextTask ? `, { nextTask: '${btn.nextTask}' }` : '');
+                return `<button class="control-btn btn-next" onclick="sendCommand({type: 'screen', screenId: '${btn.screen}'${taskContent}})">${btn.text}</button>`;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
 
