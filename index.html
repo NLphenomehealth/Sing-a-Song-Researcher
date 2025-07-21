@@ -149,7 +149,7 @@
                 'readAloud1_content': { taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Paper Clip', passageBody: 'A paper clip (or paperclip) is a small steel-wire device (sometimes plastic-coated) bent into loops that hold sheets of paper together by torsion and friction. Most modern clips are based on the Gem type introduced in the 1890s, characterized by one-and-a-half loops.\n\nPaper clips have an oblong shape with straight sides, though triangular, circular, and novelty shapes exist. Alternatives include two-piece clamping systems and spring-fastened binder clips. Their simplicity and versatility have made them ubiquitous in offices, schools, and creative projects. A typical metal paper clip weighs about one gram.'}},
                 'readAloud2_content': { taskContent: { title: 'Read the following passage Aloud', passageTitle: 'Wood', passageBody: 'Wood is the structural xylem tissue in the stems and roots of trees and other woody plants-a composite of cellulose fibers (strong under tension) embedded in lignin (resistant to compression). In living trees it provides support and transports water and nutrients.\n\nHumans have used wood for millennia as fuel, construction material, and for tools, weapons, furniture, paper, and, more recently, purified cellulose products such as cellophane. As of 2020, global forest growing stock totaled roughly 557 billion m³, with nearly 4 billion m³ harvested annually (dominantly for construction and furniture). Wood science has been an established field since the early 20th century.'}},
                 'singASong1_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'I\'m a Little Teapot', passageBody: 'Verse 1\nI\'m a little teapot, short and stout. Here is my handle, here is my spout. When the water\'s boiling, hear me shout: "Tip me over, pour me out!"\n\nVerse 2\nI\'m a little teapot, short and stout. Here is my handle, here is my spout. I can change my handle or my spout-"Tip me over, pour me out!"\n\nVerse 3\nI\'m a little teapot, short and stout. Here is my handle, here is my spout. When the water\'s boiling, hear me shout: "Tip me over, pour me out!"\n\nVerse 4\nI\'m a little teapot, short and stout. Here is my handle, here is my spout. I can change my handle or my spout - "Tip me over, pour me out!"'}},
-                'singASong2_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Twinkle, Twinkle, Little Star', passageBody: 'Twinkle, twinkle, little star, How I wonder what you are! Up above the world so high, Like a diamond in the sky.\nWhen the blazing sun is set, And the grass with dew is wet, Then you show your little light-Twinkle, twinkle, all the night.\nThen the traveler in the dark. Thanks you for your tiny spark; He could not see which way to go. If you did not twinkle so.\nAs your bright and tiny spark. Lights the traveler in the dark-Though I know not what you are, Twinkle, twinkle, little star.'}},
+                'singASong2_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Twinkle, Twinkle, Little Star', passageBody: 'Twinkle, twinkle, little star, How I wonder what you are!\n\nUp above the world so high, Like a diamond in the sky.\n\n\nWhen the blazing sun is set, And the grass with dew is wet,\n\nThen you show your little light-Twinkle, twinkle, all the night.\n\n\nThen the traveler in the dark. Thanks you for your tiny spark;\n\nHe could not see which way to go. If you did not twinkle so.\n\n\nAs your bright and tiny spark. Lights the traveler in the dark-\n\nThough I know not what you are, Twinkle, twinkle, little star.'}},
                 'singASong3_content': { taskContent: { title: 'Sing the following song Aloud', passageTitle: 'Mary Had a Little Lamb', passageBody: 'Verse 1:\nMary had a little lamb, little lamb, little lamb; Mary had a little lamb, its fleece was white as snow.\n\nVerse 2:\nAnd everywhere that Mary went, Mary went, Mary went; and everywhere that Mary went, the lamb was sure to go.\n\nVerse 3:\nIt followed her to school one day, school one day, school one day; it followed her to school one day, which was against the rule.\n\nVerse 4:\nIt made the children laugh and play, laugh and play, laugh and play; it made the children laugh and play to see the lamb at school.\n\nVerse 5:\nAnd so the teacher sent it out, sent it out, sent it out; and so the teacher sent it out, but still it lingered near.\n\nVerse 6:\nIt stood and waited round about, round about, round about; it stood and waited round about, till Mary did appear.\n\nVerse 7:\n"Why does the lamb love Mary so?" the little children cry.'}}
             };
         }
@@ -266,19 +266,25 @@
 
         function getScreenHtml(state) {
             const screenId = state.screenId;
-            let config = allConfigs[screenId] || {};
+            const config = allConfigs[screenId] || {};
             
-            if (state.taskContent && state.taskContent.title) {
-                 config = { ...config, ...state.taskContent };
+            let displayTitle = config.title;
+            const dynamicTitleScreens = ['readAloud', 'singASong', 'silentReading', 'challengeInstructions'];
+
+            if (screenId === 'countdown') {
+                displayTitle = 'Countdown';
+            } else if (dynamicTitleScreens.includes(screenId) && state.taskContent && state.taskContent.passageTitle) {
+                displayTitle = state.taskContent.passageTitle;
             }
 
+            let finalScript = config.script;
             if (screenId === 'complete' && sessionStartTime) {
                 let endTime = new Date(sessionStartTime.getTime() + (2 * 60 * 60 * 1000));
                 if (state.timezoneOffset !== undefined) {
                     const offsetDifferenceMs = (sessionStartTime.getTimezoneOffset() - state.timezoneOffset) * 60 * 1000;
                     endTime = new Date(endTime.getTime() + offsetDifferenceMs);
                 }
-                config.script = (config.script || '').replace('__END_TIME__', endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                finalScript = (config.script || '').replace('__END_TIME__', endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             }
 
             const timerControls = config.hasTimer ? `
@@ -292,12 +298,12 @@
 
             return `
                 <div class="max-w-4xl mx-auto">
-                    <h2 class="text-3xl font-bold text-gray-800 mb-2">${config.title || ''}</h2>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">${displayTitle || ''}</h2>
                     <p class="text-gray-500 mb-6">${config.participantSees || ''}</p>
                     ${config.hasTimer ? `<div class="text-8xl font-mono font-bold my-4 text-gray-800 timer-display">${state.timer?.value || config.timerDefault}</div>` : ''}
                     ${timerControls}
                     <div class="info-box">
-                        ${config.script ? `<h3>RC Script</h3><div class="script-text mb-4">${config.script}</div>` : ''}
+                        ${finalScript ? `<h3>RC Script</h3><div class="script-text mb-4">${finalScript}</div>` : ''}
                         <h3>RC Actions</h3>
                         <ul class="list-disc list-inside space-y-1">${(config.actions || []).map(a => `<li>${a}</li>`).join('')}</ul>
                         ${contextHtml}
@@ -313,10 +319,6 @@
                 'baseline': [{ text: 'Go to Task Intro', screen: 'taskIntroduction' }],
                 'taskIntroduction': [{ text: 'Start Silent Reading', screen: 'silentReading', task: 'silentReading' }],
                 'silentReading': [{ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud1_content' }],
-                'countdown': [], // Handled dynamically
-                'readAloud': [], // Handled dynamically
-                'challengeInstructions': [{ text: 'Start Song 1 ("Teapot")', screen: 'singASong', task: 'singASong1_content' }],
-                'singASong': [], // Handled dynamically
                 'postTaskSurvey': [{ text: 'Begin Meal', screen: 'meal' }],
                 'meal': [{ text: 'Finish Protocol', screen: 'complete' }],
             };
@@ -324,17 +326,23 @@
             let buttons = [];
             if (currentId === 'countdown') {
                 const nextTaskKey = currentGameState.taskContent?.nextTask;
-                const nextTaskInfo = allConfigs[nextTaskKey];
-                if(nextTaskInfo) {
-                    const nextScreen = nextTaskKey.startsWith('sing') ? 'singASong' : 'readAloud';
-                    buttons.push({ text: `Start ${nextTaskInfo.taskContent.passageTitle}`, screen: nextScreen, task: nextTaskKey });
+                if (nextTaskKey === 'challengeInstructions') {
+                    buttons.push({ text: 'Start Challenge Instructions', screen: 'challengeInstructions', task: 'challengeInstructions' });
+                } else {
+                    const nextTaskInfo = allConfigs[nextTaskKey];
+                    if(nextTaskInfo) {
+                        const nextScreen = nextTaskKey.startsWith('sing') ? 'singASong' : 'readAloud';
+                        buttons.push({ text: `Start ${nextTaskInfo.taskContent.passageTitle}`, screen: nextScreen, task: nextTaskKey });
+                    }
                 }
             } else if (currentId === 'readAloud') {
                 if (currentGameState.taskContent.passageTitle === 'Paper Clip') {
                     buttons.push({ text: 'Start Countdown', screen: 'countdown', nextTask: 'readAloud2_content' });
-                } else {
-                    buttons.push({ text: 'Start Challenge Instructions', screen: 'challengeInstructions' });
+                } else if (currentGameState.taskContent.passageTitle === 'Wood') {
+                    buttons.push({ text: 'Start Countdown', screen: 'countdown', nextTask: 'challengeInstructions' });
                 }
+            } else if (currentId === 'challengeInstructions') {
+                buttons.push({ text: 'Start Song 1 ("Teapot")', screen: 'singASong', task: 'singASong1_content' });
             } else if (currentId === 'singASong') {
                  if (currentGameState.taskContent.passageTitle.includes('Teapot')) {
                     buttons.push({ text: 'Start Countdown (for Song 2)', screen: 'countdown', nextTask: 'singASong2_content' });
