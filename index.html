@@ -92,7 +92,7 @@
                 },
                 'preBaselineSurvey': {
                     title: 'Stress Baseline Survey', participantSees: "Participant is being asked to log their stress level.",
-                    script: "Next I'm going to ask you to rate your current stress levels using the scale provided on the screen. Please log your response by opening your study app and adding your response to the I've Noticed.. feature labelling your entry as Stress 0= [answer].\n\nNow we're going to begin.\n\nI'm going to start recording the call now so that your performance on the upcoming tasks can be later scored by additional evaluators.",
+                    script: "Next I'm going to ask you to rate your current stress levels using the scale provided on the screen. Please click on the option that best describes how you feel.\n\nNow we're going to begin.\n\nI'm going to start recording the call now so that your performance on the upcoming tasks can be later scored by additional evaluators.",
                     actions: ["Start recording the call."]
                 },
                 'baseline': {
@@ -133,8 +133,8 @@
                 },
                 'postTaskSurvey': {
                     title: 'Post-Task Stress Survey', participantSees: "Participant is being asked to log their stress level.",
-                    script: "That concludes the performance tasks.\n\nI'm going to ask you to again rate your current level of stress using the I've noticed.. feature in the study app using the label Stress 1= [Answer].",
-                    actions: ["Wait for participants to complete I've noticed entry."]
+                    script: "That concludes the performance tasks.\n\nI'm going to ask you to again rate your current level of stress by clicking the option on the screen that best describes how you feel.",
+                    actions: ["Wait for participants to make a selection."]
                 },
                 'meal': {
                     title: 'Post-Task Meal', participantSees: "Participant sees a 5-minute timer to consume the beverage.", hasTimer: true, timerDefault: '5:00',
@@ -262,12 +262,19 @@
         
         let currentScreenId = null;
         function renderState(newState) {
+            const oldState = currentGameState;
             currentGameState = newState;
-            if (newState.screenId !== currentScreenId) {
+
+            const screenChanged = newState.screenId !== oldState.screenId;
+            const preStressChanged = newState.stressResponsePre !== oldState.stressResponsePre;
+            const postStressChanged = newState.stressResponsePost !== oldState.stressResponsePost;
+
+            if (screenChanged || 
+               (newState.screenId === 'preBaselineSurvey' && preStressChanged) ||
+               (newState.screenId === 'postTaskSurvey' && postStressChanged)) {
                 currentScreenId = newState.screenId;
-                // Add state to history only if it's a new screen
                 if (history.length === 0 || history[history.length - 1].screenId !== newState.screenId) {
-                    history.push(JSON.parse(JSON.stringify(newState))); // Deep copy
+                    history.push(JSON.parse(JSON.stringify(newState)));
                 }
                 document.getElementById('all-screens-container').innerHTML = getScreenHtml(newState);
                 document.getElementById('next-screen-container').innerHTML = buildNextStepButtons(newState.screenId);
@@ -283,6 +290,23 @@
             const isRunning = state.timer?.running;
             document.querySelector(`.btn-start`)?.classList.toggle('hidden', isRunning);
             document.querySelector(`.btn-stop`)?.classList.toggle('hidden', !isRunning);
+        }
+
+        function getStressResponseHtml(response) {
+            if (response) {
+                return `
+                    <div class="mt-6 p-4 bg-green-100 border-2 border-green-300 rounded-lg text-left">
+                        <h4 class="font-bold text-green-800 text-lg">Participant's Stress Response:</h4>
+                        <p class="text-2xl text-green-900 font-semibold">${response}</p>
+                    </div>
+                `;
+            } else {
+                 return `
+                    <div class="mt-6 p-4 bg-yellow-100 border-2 border-yellow-300 rounded-lg text-left">
+                        <p class="text-yellow-800 font-semibold">Waiting for participant to select a stress level...</p>
+                    </div>
+                `;
+            }
         }
 
         function getScreenHtml(state) {
@@ -318,10 +342,18 @@
 
             const contextHtml = config.context ? `<div class="mt-4"><h3>Context</h3><p class="text-sm">${config.context}</p></div>` : '';
 
+            let stressHtml = '';
+            if (screenId === 'preBaselineSurvey') {
+                stressHtml = getStressResponseHtml(state.stressResponsePre);
+            } else if (screenId === 'postTaskSurvey') {
+                stressHtml = getStressResponseHtml(state.stressResponsePost);
+            }
+
             return `
                 <div class="max-w-4xl mx-auto">
                     <h2 class="text-3xl font-bold text-gray-800 mb-2">${displayTitle || ''}</h2>
                     <p class="text-gray-500 mb-6">${config.participantSees || ''}</p>
+                    ${stressHtml}
                     ${config.hasTimer ? `<div class="text-8xl font-mono font-bold my-4 text-gray-800 timer-display">${state.timer?.value || config.timerDefault}</div>` : ''}
                     ${timerControls}
                     <div class="info-box">
